@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Spinner from "@/components/ui/spinner";
+import { useUser } from '@/context/UserContext';
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -38,6 +39,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
+  const { login } = useUser();
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -76,9 +78,8 @@ const Auth = () => {
       });
       const result = await response.json();
       if (response.ok) {
-        localStorage.setItem("cm_token", result.token);
+        login(result.token);
         toast.success("Login successful");
-        navigate("/dashboard");
       } else {
         toast.error(result?.error || "Login failed");
       }

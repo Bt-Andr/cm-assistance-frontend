@@ -11,6 +11,7 @@ interface User {
 interface UserContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (token: string) => void;
   logout: () => void;
 }
@@ -19,10 +20,12 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem("cm_token");
+
     if (token && isTokenValid(token)) {
       const decoded = JSON.parse(atob(token.split(".")[1]));
       setUser({ userId: decoded.userId, email: decoded.email });
@@ -30,6 +33,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.removeItem("cm_token");
       setUser(null);
     }
+
+    setIsLoading(false);
   }, []);
 
   const login = (token: string) => {
@@ -48,7 +53,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
+    <UserContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
       {children}
     </UserContext.Provider>
   );
