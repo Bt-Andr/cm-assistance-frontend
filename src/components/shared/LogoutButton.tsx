@@ -1,6 +1,12 @@
 import { useNavigate } from "react-router-dom";
+import React from "react";
+import { string } from "zod";
 
-const LogoutButton = () => {
+type LogoutButtonProps = {
+  className?: string;
+};
+
+const LogoutButton = ({ className }: LogoutButtonProps) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -11,7 +17,7 @@ const LogoutButton = () => {
   return (
     <button
       onClick={handleLogout}
-      className="text-sm text-red-600 hover:underline"
+      className={className ?? "text-sm text-red-600 hover:underline"}
     >
       Déconnexion
     </button>

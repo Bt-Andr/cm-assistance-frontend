@@ -1,5 +1,11 @@
-import { apiClient } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/apiClient";
 
-export const fetchTickets = async () => {
-  return await apiClient("/api/tickets");
+export const useTickets = () => {
+  return useQuery({
+    queryKey: ["tickets"],
+    queryFn: async () => {
+      return await apiClient("https://backend-cm-assistance.onrender.com/api/tickets");
+    },
+  });
 };

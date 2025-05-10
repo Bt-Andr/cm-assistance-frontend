@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, MoreVertical, MessageSquare, CheckCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTickets } from "@/hooks/useTickets";
 
 // Status badge component
 interface StatusBadgeProps {
@@ -50,54 +51,6 @@ const StatusBadge = ({ status }: StatusBadgeProps) => {
   );
 };
 
-// Dummy ticket data
-const tickets = [
-  {
-    id: 'TKT-1234',
-    subject: 'Cannot schedule posts on mobile app',
-    client: 'Sarah Johnson',
-    clientAvatar: 'SJ',
-    createdAt: '2023-05-03T10:30:00Z',
-    status: 'open' as const,
-    priority: 'high'
-  },
-  {
-    id: 'TKT-1233',
-    subject: 'Need help setting up automated responses',
-    client: 'Tech Corp Inc.',
-    clientAvatar: 'TC',
-    createdAt: '2023-05-02T16:45:00Z',
-    status: 'pending' as const,
-    priority: 'medium'
-  },
-  {
-    id: 'TKT-1232',
-    subject: 'Integration with third-party analytics',
-    client: 'John Smith',
-    clientAvatar: 'JS',
-    createdAt: '2023-05-02T09:15:00Z',
-    status: 'open' as const,
-    priority: 'medium'
-  },
-  {
-    id: 'TKT-1231',
-    subject: 'Login issues on desktop browser',
-    client: 'Emily Davis',
-    clientAvatar: 'ED',
-    createdAt: '2023-05-01T14:20:00Z',
-    status: 'closed' as const,
-    priority: 'high'
-  },
-  {
-    id: 'TKT-1230',
-    subject: 'Request for additional user licenses',
-    client: 'Marketing Team LLC',
-    clientAvatar: 'MT',
-    createdAt: '2023-05-01T11:05:00Z',
-    status: 'closed' as const,
-    priority: 'low'
-  }
-];
 
 // Format date helper
 const formatDate = (dateString: string) => {
@@ -113,8 +66,9 @@ const formatDate = (dateString: string) => {
 const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const { data: tickets, isLoading, error } = useTickets();
   
-  const filteredTickets = tickets.filter(ticket => {
+  const filteredTickets = (tickets || []).filter(ticket => {
     // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -133,6 +87,14 @@ const Tickets = () => {
     
     return true;
   });
+  
+  if (isLoading) {
+    return <p className="text-center py-10">Chargement des tickets...</p>;
+  }
+  
+  if (error) {
+    return <p className="text-center text-red-500 py-10">Erreur lors du chargement des tickets.</p>;
+  }
   
   return (
     <div className="space-y-6">
