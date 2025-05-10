@@ -6,12 +6,29 @@ import LogoutButton from "@/components/shared/LogoutButton";
 import { cn } from "@/lib/utils";
 import { Link } from 'react-router-dom';
 
+const getInitials = (name?: string, email?: string) => {
+  if (name) {
+    const parts = name.trim().split(" ");
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  if (email) return email[0].toUpperCase();
+  return "U";
+};
+
 const Navbar = () => {
   const [searchValue, setSearchValue] = useState('');
   const { data } = useDashboard();
   const user = data?.user;
+  const notifications = data?.notifications || []; // notifications dynamiques
+  const notifCount = notifications.length;
+  const [notifOpen, setNotifOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Suppose que la photo de profil est dans user.avatar ou user.photoURL
+  const profilePhoto = user?.avatar || user?.photoURL;
 
   // Fermer le dropdown si on clique en dehors
   useEffect(() => {
@@ -19,14 +36,18 @@ const Navbar = () => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
       }
+      // Ajout pour notifications
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotifOpen(false);
+      }
     }
-    if (dropdownOpen) {
+    if (dropdownOpen || notifOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownOpen]);
+  }, [dropdownOpen, notifOpen]);
 
   return (
     <div className="h-16 border-b border-secondary-light bg-white flex items-center px-6 justify-between">
@@ -52,13 +73,37 @@ const Navbar = () => {
         </div>
         
         {/* Notifications */}
-        <div className="relative">
-          <button className="p-2 rounded-lg hover:bg-secondary-light transition-colors relative">
+        <div className="relative" ref={notifRef}>
+          <button
+            className="p-2 rounded-lg hover:bg-secondary-light transition-colors relative"
+            onClick={() => setNotifOpen((open) => !open)}
+          >
             <Bell className="h-5 w-5 text-secondary" />
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-xs p-0 rounded-full">
-              3
-            </Badge>
+            {notifCount > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-xs p-0 rounded-full">
+                {notifCount}
+              </Badge>
+            )}
           </button>
+          {notifOpen && (
+            <div className="absolute right-0 mt-2 w-80 bg-white border border-secondary-light rounded-lg shadow-lg z-50">
+              <div className="p-4 font-semibold text-secondary border-b border-secondary-light">
+                Notifications
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {notifCount === 0 ? (
+                  <div className="p-4 text-secondary/60 text-sm">Aucune notification</div>
+                ) : (
+                  notifications.map((notif, idx) => (
+                    <div key={idx} className="p-4 border-b border-secondary-light last:border-b-0 text-sm text-secondary">
+                      <div className="font-medium">{notif.title}</div>
+                      <div className="text-xs text-secondary/60">{notif.time}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Profile */}
@@ -67,9 +112,17 @@ const Navbar = () => {
             className="flex items-center space-x-3 p-1 rounded-lg hover:bg-secondary-light transition-colors"
             onClick={() => setDropdownOpen((open) => !open)}
           >
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white">
-              JD
-            </div>
+            {profilePhoto ? (
+              <img
+                src={profilePhoto}
+                alt={user?.name || user?.email || "Utilisateur"}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white font-bold">
+                {getInitials(user?.name, user?.email)}
+              </div>
+            )}
             <span className="text-sm font-medium text-secondary hidden sm:inline">
               {user?.name || user?.email || "Utilisateur"}
             </span>

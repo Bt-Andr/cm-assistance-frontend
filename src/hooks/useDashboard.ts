@@ -21,13 +21,18 @@ interface DashboardData {
     newClients: number;
     newClientsTrend: string;
   };
-  activities: DashboardActivity[]; // renommé pour correspondre à ton code
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  };
+  activities: DashboardActivity[];
+  notifications: DashboardActivity[]; // <-- Ajoute cette ligne
+  user: User;
 }
+
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  photoURL?: string; 
+};
 
 export const useDashboard = () => {
   return useQuery<DashboardData>({
