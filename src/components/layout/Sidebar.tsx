@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -12,6 +11,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/context/UserContext';
 
 type SidebarItemProps = {
   icon: React.ElementType;
@@ -34,10 +34,25 @@ const SidebarItem = ({ icon: Icon, label, to, active }: SidebarItemProps) => (
   </Link>
 );
 
+// Fonction utilitaire pour les initiales
+function getInitials(name?: string, email?: string) {
+  if (name) {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  }
+  if (email) {
+    return email[0].toUpperCase();
+  }
+  return "U";
+}
+
 const Sidebar = () => {
-  // In a real app, you'd get the current path to determine active state
   const currentPath = window.location.pathname;
-  
+  const { user } = useUser();
+
   return (
     <div className="w-64 min-h-screen bg-white border-r border-secondary-light flex flex-col">
       {/* Logo */}
@@ -82,12 +97,15 @@ const Sidebar = () => {
           to="/calendar" 
           active={currentPath.startsWith('/calendar')}
         />
-        <SidebarItem 
-          icon={BarChart} 
-          label="Analytics" 
-          to="/analytics" 
-          active={currentPath.startsWith('/analytics')}
-        />
+        {/* Affichage conditionnel pour l'admin */}
+        {user?.role === "admin" && (
+          <SidebarItem 
+            icon={BarChart} 
+            label="Analytics" 
+            to="/analytics" 
+            active={currentPath.startsWith('/analytics')}
+          />
+        )}
         
         <div className="py-2">
           <div className="h-px bg-secondary-light"></div>
@@ -110,12 +128,13 @@ const Sidebar = () => {
       {/* User Section */}
       <div className="p-4 border-t border-secondary-light">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-white">
-            JD
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-lg">
+            {getInitials(user?.name, user?.email)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-secondary truncate">John Doe</p>
-            <p className="text-xs text-secondary/60 truncate">john@example.com</p>
+            <p className="text-sm font-medium text-secondary truncate">{user?.name || "John Doe"}</p>
+            <p className="text-xs text-secondary/60 truncate">{user?.email || "john@example.com"}</p>
+            <p className="text-xs text-primary/80 mt-1">{user?.role === "admin" ? "Administrateur" : "Utilisateur"}</p>
           </div>
         </div>
       </div>

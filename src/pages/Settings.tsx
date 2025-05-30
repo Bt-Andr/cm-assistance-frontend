@@ -1,14 +1,75 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { User, Bell, Settings as SettingsIcon, Shield, Globe, CreditCard, CheckCircle } from 'lucide-react';
+import { toast } from "sonner";
+import Spinner from "@/components/ui/spinner";
+import { useUser } from "@/context/UserContext";
+import { useUpdateProfile } from "@/hooks/useSettings"; // <-- Utilisation du bon hook
 
 const Settings = () => {
+  // Dynamically load user data
+  const { user, isLoading: userLoading } = useUser();
+  const [profile, setProfile] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    company: "",
+    position: "",
+    avatar: "",
+    phone: "", // Ajout du champ phone
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Load user data into form
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        company: user.company || "",
+        position: user.position || "",
+        avatar: user.avatarUrl || "",
+        phone: user.phone || "", // Ajout du champ phone
+      });
+    }
+  }, [user]);
+
+  // Utilisation du hook useUpdateProfile depuis useSettings.ts
+  const { mutate: updateProfile, isPending: isProfilePending } = useUpdateProfile();
+
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setProfile({ ...profile, [e.target.name]: e.target.value });
+  };
+
+  const handleProfileSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    updateProfile(profile, {
+      onSuccess: () => {
+        toast.success("Profil mis à jour !");
+        setSaving(false);
+      },
+      onError: (error: any) => {
+        toast.error(error?.message || "Erreur lors de la mise à jour du profil.");
+        setSaving(false);
+      },
+    });
+  };
+
+  if (userLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-secondary mb-6">Settings</h1>
-      
       <Tabs defaultValue="account" className="space-y-6">
         <TabsList className="bg-white p-1 border border-secondary-light rounded-lg">
           <TabsTrigger value="account" className="data-[state=active]:bg-primary data-[state=active]:text-white">
@@ -38,13 +99,17 @@ const Settings = () => {
                 <CardDescription>Update your account details and profile picture</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
+                <form className="space-y-6" onSubmit={handleProfileSave}>
                   <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                     <div className="relative">
-                      <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center text-white text-xl">
-                        JD
+                      <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center text-white text-xl overflow-hidden">
+                        {profile.avatar ? (
+                          <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          (profile.firstName[0] || "") + (profile.lastName[0] || "")
+                        )}
                       </div>
-                      <button className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 shadow">
+                      <button type="button" className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 shadow">
                         <User className="h-4 w-4" />
                       </button>
                     </div>
@@ -53,10 +118,10 @@ const Settings = () => {
                         Upload a new profile picture or avatar. Recommended size is 200x200px.
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" type="button" disabled>
                           Upload Image
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" type="button" disabled>
                           Remove
                         </Button>
                       </div>
@@ -71,8 +136,10 @@ const Settings = () => {
                         </label>
                         <input
                           id="firstName"
+                          name="firstName"
                           type="text"
-                          defaultValue="John"
+                          value={profile.firstName}
+                          onChange={handleProfileChange}
                           className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         />
                       </div>
@@ -82,8 +149,10 @@ const Settings = () => {
                         </label>
                         <input
                           id="lastName"
+                          name="lastName"
                           type="text"
-                          defaultValue="Doe"
+                          value={profile.lastName}
+                          onChange={handleProfileChange}
                           className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         />
                       </div>
@@ -95,8 +164,10 @@ const Settings = () => {
                       </label>
                       <input
                         id="email"
+                        name="email"
                         type="email"
-                        defaultValue="john@example.com"
+                        value={profile.email}
+                        onChange={handleProfileChange}
                         className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
                       />
                     </div>
@@ -107,8 +178,10 @@ const Settings = () => {
                       </label>
                       <input
                         id="company"
+                        name="company"
                         type="text"
-                        defaultValue="CM Assistance Agency"
+                        value={profile.company}
+                        onChange={handleProfileChange}
                         className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
                       />
                     </div>
@@ -119,17 +192,36 @@ const Settings = () => {
                       </label>
                       <input
                         id="position"
+                        name="position"
                         type="text"
-                        defaultValue="Community Manager"
+                        value={profile.position}
+                        onChange={handleProfileChange}
                         className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="phone" className="block text-sm font-medium text-secondary mb-1">
+                        Phone
+                      </label>
+                      <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={profile.phone}
+                        onChange={handleProfileChange}
+                        className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        autoComplete="tel"
                       />
                     </div>
                     
                     <div className="flex justify-end">
-                      <Button>Save Changes</Button>
+                      <Button type="submit" disabled={saving || isProfilePending}>
+                        {saving || isProfilePending ? "Saving..." : "Save Changes"}
+                      </Button>
                     </div>
                   </div>
-                </div>
+                </form>
               </CardContent>
             </Card>
             
@@ -149,6 +241,7 @@ const Settings = () => {
                         id="current-password"
                         type="password"
                         className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        autoComplete="current-password"
                       />
                     </div>
                     
@@ -160,6 +253,7 @@ const Settings = () => {
                         id="new-password"
                         type="password"
                         className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        autoComplete="new-password"
                       />
                     </div>
                     
@@ -171,11 +265,12 @@ const Settings = () => {
                         id="confirm-password"
                         type="password"
                         className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        autoComplete="new-password"
                       />
                     </div>
                     
                     <div className="flex justify-end">
-                      <Button>Update Password</Button>
+                      <Button type="button">Update Password</Button>
                     </div>
                   </div>
                   
@@ -187,7 +282,7 @@ const Settings = () => {
                       Add an extra layer of security to your account by requiring more than just a password to sign in.
                     </p>
                     <div className="mt-4">
-                      <Button variant="outline" className="flex items-center">
+                      <Button variant="outline" className="flex items-center" type="button">
                         <Shield className="h-4 w-4 mr-2" />
                         Enable 2FA
                       </Button>

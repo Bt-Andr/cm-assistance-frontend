@@ -7,32 +7,44 @@ interface DashboardActivity {
   description: string;
   time: string;
   icon?: string;
-  type?: "open" | "closed" | "info"; // on peut étendre selon les types possibles
+  type?: "open" | "closed" | "info" | "other";
 }
 
 interface DashboardData {
   stats: {
     openTickets: number;
     openTicketsTrend: string;
+    openTicketsIsPositive?: boolean;
     avgResponseTime: string;
     avgResponseTimeTrend: string;
+    avgResponseTimeIsPositive?: boolean;
     resolutionRate: string;
     resolutionRateTrend: string;
+    resolutionRateIsPositive?: boolean;
     newClients: number;
     newClientsTrend: string;
+    newClientsIsPositive?: boolean;
+    activeUsers: number;
   };
   activities: DashboardActivity[];
-  notifications: DashboardActivity[]; // <-- Ajoute cette ligne
-  user: User;
+  notifications: DashboardActivity[];
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string;
+    role?: string;
+    preferences?: {
+      language?: string;
+      notifications?: boolean;
+    };
+    emailVerified?: boolean;
+    isActive?: boolean;
+    lastActiveAt?: string;
+    permissions?: string[];
+    referredBy?: string;
+  };
 }
-
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  photoURL?: string; 
-};
 
 export const useDashboard = () => {
   return useQuery<DashboardData>({

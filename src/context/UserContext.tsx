@@ -6,13 +6,23 @@ import { toast } from "sonner";
 interface User {
   userId: string;
   email: string;
+  role?: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string
+  position?: string;
+  company?: string;
+  phone?: string;
+  address?: string;
+  avatarUrl?: string;
+  // Ajoute d'autres champs utiles si besoin
 }
 
 interface UserContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string) => void;
+  login: (token: string, user?: User) => void;
   logout: () => void;
 }
 
@@ -28,7 +38,19 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (token && isTokenValid(token)) {
       const decoded = JSON.parse(atob(token.split(".")[1]));
-      setUser({ userId: decoded.userId, email: decoded.email });
+      setUser({
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+        name: decoded.name,
+        firstName: decoded.firstName,
+        lastName: decoded.lastName,
+        position: decoded.position,
+        company: decoded.company,
+        phone: decoded.phone,
+        address: decoded.address,
+        avatarUrl: decoded.avatarUrl,
+      });
     } else {
       localStorage.removeItem("cm_token");
       setUser(null);
@@ -37,10 +59,29 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const login = (token: string) => {
+  // Accepte un user optionnel pour compatibilité avec Auth.tsx
+  const login = (token: string, userObj?: User) => {
     localStorage.setItem("cm_token", token);
-    const decoded = JSON.parse(atob(token.split(".")[1]));
-    setUser({ userId: decoded.userId, email: decoded.email });
+    let userToSet: User;
+    if (userObj) {
+      userToSet = userObj;
+    } else {
+      const decoded = JSON.parse(atob(token.split(".")[1]));
+      userToSet = {
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+        name: decoded.name,
+        firstName: decoded.firstName,
+        lastName: decoded.lastName,
+        position: decoded.position,
+        company: decoded.company,
+        phone: decoded.phone,
+        address: decoded.address,
+        avatarUrl: decoded.avatarUrl,
+      };
+    }
+    setUser(userToSet);
     toast.success("Connexion réussie");
     navigate("/dashboard");
   };

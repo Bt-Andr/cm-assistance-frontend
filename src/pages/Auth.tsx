@@ -12,6 +12,9 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Spinner from "@/components/ui/spinner";
 import { useUser } from '@/context/UserContext';
+import { useLogin } from "@/hooks/useLogin";
+import { useRegister } from "@/hooks/useRegister";
+import { useForgotPassword } from "@/hooks/useForgotPassword";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -31,15 +34,25 @@ const signupSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const forgotSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
+type ForgotFormData = z.infer<typeof forgotSchema>;
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const navigate = useNavigate();
-  const { login } = useUser();
+  const { login: loginContext } = useUser();
+
+  const { mutate: loginMutate, isPending: isLoginPending } = useLogin();
+  const { mutate: registerMutate, isPending: isRegisterPending } = useRegister();
+  const { mutate: forgotMutate, isPending: isForgotPending } = useForgotPassword();
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -57,66 +70,77 @@ const Auth = () => {
     },
   });
 
-  const {
-    handleSubmit: handleLoginSubmit,
-    control: loginControl,
-    formState: { isSubmitting: isLoginSubmitting },
-  } = loginForm;
+  const forgotForm = useForm<ForgotFormData>({
+    resolver: zodResolver(forgotSchema),
+    defaultValues: { email: "" },
+  });
 
-  const {
-    handleSubmit: handleSignupSubmit,
-    control: signupControl,
-    formState: { isSubmitting: isSignupSubmitting },
-  } = signupForm;
-
-  const onLoginSubmit = async (data: LoginFormData) => {
-    try {
-      const response = await fetch("https://backend-cm-assistance.onrender.com/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const result = await response.json();
-      if (response.ok) {
-        login(result.token);
-        toast.success("Login successful");
-      } else {
-        toast.error(result?.error || "Login failed");
-      }
-    } catch (error) {
-      toast.error("Network error");
-    }
+  const onLoginSubmit = (data: LoginFormData) => {
+    loginMutate({ email: data.email, password: data.password }, {
+      onSuccess: (result: any) => {
+        loginContext(result.token, result.user);
+        toast.success(result?.message || "Connexion réussie !");
+        navigate("/dashboard");
+      },
+      onError: (error: any) => {
+        // Prend en compte les différents formats d'erreur API
+        toast.error(
+          error?.message ||
+          error?.response?.data?.message ||
+          (typeof error === "string" ? error : "Erreur de connexion")
+        );
+      },
+    });
   };
 
-  const onSignupSubmit = async (data: SignupFormData) => {
-    try {
-      const payload = {
-        name: data.fullName,
-        email: data.email,
-        password: data.password,
-        companyType: data.companyType,
-      };
-      const response = await fetch("https://backend-cm-assistance.onrender.com/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json();
-      if (response.ok) {
-        toast.success("Account created!");
-        navigate("/dashboard");
-      } else {
-        toast.error(result?.error || "Signup failed");
-      }
-    } catch (error) {
-      toast.error("Network error");
-    }
+  const onSignupSubmit = (data: SignupFormData) => {
+    const payload = {
+      name: data.fullName,
+      email: data.email,
+      password: data.password,
+      companyType: data.companyType,
+    };
+    registerMutate(payload, {
+      onSuccess: (result: any) => {
+        toast.success(result?.message || "Compte créé !");
+        if (result.user?.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
+      },
+      onError: (error: any) => {
+        toast.error(
+          error?.message ||
+          error?.response?.data?.message ||
+          (typeof error === "string" ? error : "Erreur lors de l'inscription")
+        );
+      },
+    });
+  };
+
+  const onForgotSubmit = (data: ForgotFormData) => {
+    forgotMutate({ email: data.email }, {
+      onSuccess: (result: any) => {
+        toast.success(result?.message || "Un email de réinitialisation a été envoyé.");
+        setShowForgot(false);
+        forgotForm.reset();
+      },
+      onError: (error: any) => {
+        toast.error(
+          error?.message ||
+          error?.response?.data?.message ||
+          (typeof error === "string" ? error : "Erreur lors de la demande.")
+        );
+      },
+    });
   };
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setShowForgot(false);
   };
 
   return (
@@ -150,64 +174,113 @@ const Auth = () => {
                   <p className="text-muted-foreground">Sign in to your account to continue</p>
                 </div>
 
-                <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                    <FormField
-                      control={loginForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email address</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter your email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                {!showForgot ? (
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                      <FormField
+                        control={loginForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email address</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter your email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={loginForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input 
-                                type={showPassword ? "text" : "password"} 
-                                placeholder="Enter your password" 
-                                {...field}
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3"
-                                onClick={() => setShowPassword(!showPassword)}
-                              >
-                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                              </Button>
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  type={showPassword ? "text" : "password"} 
+                                  placeholder="Enter your password" 
+                                  {...field}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="absolute right-0 top-0 h-full px-3"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                >
+                                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </Button>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-between items-center">
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="p-0 text-xs"
+                          onClick={() => setShowForgot(true)}
+                        >
+                          Mot de passe oublié ?
+                        </Button>
+                        <Button type="submit" className="w-fit" disabled={isLoginPending || loginForm.formState.isSubmitting}>
+                          {isLoginPending || loginForm.formState.isSubmitting ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Spinner />
+                              Connexion...
                             </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button type="submit" className="w-full" disabled={loginForm.formState.isSubmitting}>
-                    {loginForm.formState.isSubmitting  ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Spinner />
-                        Connexion...
+                          ) : (
+                            "Sign in"
+                          )}
+                        </Button>
                       </div>
-                    ) : (
-                        "Sign in"
-                      )
-                    }
-                    </Button>
-                  </form>
-                </Form>
+                    </form>
+                  </Form>
+                ) : (
+                  <Form {...forgotForm}>
+                    <form onSubmit={forgotForm.handleSubmit(onForgotSubmit)} className="space-y-4">
+                      <FormField
+                        control={forgotForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Votre email</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Entrez votre email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex justify-between items-center">
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="p-0 text-xs"
+                          onClick={() => setShowForgot(false)}
+                        >
+                          Retour à la connexion
+                        </Button>
+                        <Button type="submit" className="w-fit" disabled={isForgotPending || forgotForm.formState.isSubmitting}>
+                          {isForgotPending || forgotForm.formState.isSubmitting ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Spinner />
+                              Envoi...
+                            </div>
+                          ) : (
+                            "Envoyer"
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                )}
 
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">
@@ -365,16 +438,15 @@ const Auth = () => {
                       )}
                     />
 
-                    <Button type="submit" className="w-full" disabled={isSignupSubmitting}>
-                    {isSignupSubmitting ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Spinner />
-                        Création...
-                      </div>
+                    <Button type="submit" className="w-full" disabled={isRegisterPending || signupForm.formState.isSubmitting}>
+                      {isRegisterPending || signupForm.formState.isSubmitting ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <Spinner />
+                          Création...
+                        </div>
                       ) : (
                         "Create Account"
-                      )
-                    }
+                      )}
                     </Button>
                   </form>
                 </Form>

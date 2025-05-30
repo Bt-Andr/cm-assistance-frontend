@@ -27,8 +27,8 @@ const Navbar = () => {
   const notifRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Suppose que la photo de profil est dans user.avatar ou user.photoURL
-  const profilePhoto = user?.avatar || user?.photoURL;
+  // Suppose que la photo de profil est dans user.avatarUrl
+  const profilePhoto = user?.avatarUrl;
 
   // Fermer le dropdown si on clique en dehors
   useEffect(() => {
@@ -148,6 +148,18 @@ const Navbar = () => {
               >
                 Paramètres
               </Link>
+              {/* Affichage conditionnel pour l'admin */}
+              {user?.role === "admin" && (
+                <Link
+                  to="/admin"
+                  className="block px-4 py-2 text-secondary hover:bg-secondary-light transition-colors"
+                >
+                  Administration
+                </Link>
+              )}
+              <div className="px-4 py-2 text-xs text-secondary/60">
+                {user?.role === "admin" ? "Administrateur" : "Utilisateur"}
+              </div>
               <div className="border-t border-secondary-light my-1" />
                 <LogoutButton className={cn("block px-4 py-2 text-red-600 hover:bg-secondary-light transition-colors")}/>
             </div>
