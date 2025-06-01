@@ -10,13 +10,12 @@ export const useReplyTicket = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ ticketId, message }: ReplyTicketData) => {
-      const res = await apiClient(`/api/tickets/${ticketId}/reply`, {
+      // apiClient gère déjà la gestion des erreurs et retourne le JSON
+      return await apiClient(`/api/tickets/${ticketId}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
       });
-      if (!res.ok) throw new Error("Erreur lors de la réponse au ticket");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });

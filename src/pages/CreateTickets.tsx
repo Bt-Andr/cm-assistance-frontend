@@ -19,11 +19,11 @@ const CreateTickets = () => {
 
   const [form, setForm] = useState<{
     subject: string;
-    description: string;
+    message: string;
     priority: Priority;
   }>({
     subject: "",
-    description: "",
+    message: "",
     priority: "medium",
   });
 
@@ -93,9 +93,9 @@ const CreateTickets = () => {
                 Description <span className="text-red-500">*</span>
               </label>
               <Textarea
-                id="description"
-                name="description"
-                value={form.description}
+                id="message"
+                name="message"
+                value={form.message}
                 onChange={handleChange}
                 required
                 rows={5}

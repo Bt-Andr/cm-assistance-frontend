@@ -13,7 +13,7 @@ export const useEditPost = () => {
 
   return useMutation({
     mutationFn: async (post: EditPostData) => {
-      const res = await apiClient(`/api/posts/${post.id}`, {
+      return await apiClient(`/api/posts/${post.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -22,11 +22,6 @@ export const useEditPost = () => {
           image: post.image,
         }),
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur lors de la modification du post");
-      }
-      return res.json();
     },
     onSuccess: () => {
       // Invalide le cache des posts pour rafraîchir la liste

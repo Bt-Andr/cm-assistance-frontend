@@ -20,16 +20,12 @@ export const useUpdateProfile = () => {
       if (!profile.email || !profile.firstName || !profile.lastName) {
         throw new Error("Veuillez remplir tous les champs obligatoires.");
       }
-      const res = await apiClient("/api/user/profile", {
+      // apiClient gère déjà la gestion des erreurs et retourne le JSON
+      return await apiClient("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profile),
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur lors de la mise à jour du profil");
-      }
-      return res.json();
     },
     onSuccess: (data) => {
       // Met à jour le cache utilisateur pour refléter immédiatement les changements

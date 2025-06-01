@@ -3,7 +3,7 @@ import { apiClient } from "@/lib/apiClient";
 
 type CreateTicketData = {
   subject: string;
-  description: string;
+  message: string;
   priority: "low" | "medium" | "high";
 };
 
@@ -11,17 +11,12 @@ export const useCreateTickets = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (ticket: CreateTicketData) => {
-      const res = await apiClient("/api/tickets", {
+    mutationFn: async (postData: CreateTicketData) => {
+      return await apiClient("https://backend-cm-assistance.onrender.com/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ticket),
+        body: JSON.stringify(postData),
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur lors de la création du ticket");
-      }
-      return res.json();
     },
     onSuccess: () => {
       // Invalide le cache pour rafraîchir la liste des tickets

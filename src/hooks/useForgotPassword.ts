@@ -8,16 +8,12 @@ type ForgotPasswordData = {
 export const useForgotPassword = () => {
   return useMutation({
     mutationFn: async (data: ForgotPasswordData) => {
-      const res = await apiClient("/api/auth/forgot-password", {
+      // apiClient gère déjà la gestion des erreurs et retourne le JSON
+      return await apiClient("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur lors de la demande de réinitialisation");
-      }
-      return res.json();
     },
   });
 };

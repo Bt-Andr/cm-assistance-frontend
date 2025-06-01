@@ -5,9 +5,7 @@ export const useDeletePost = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (postId: string) => {
-      const res = await apiClient(`/api/posts/${postId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Erreur lors de la suppression du post");
-      return res.json();
+      return await apiClient(`/api/posts/${postId}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });

@@ -7,6 +7,7 @@ import ProtectedRoute from "@/components/routing/ProtectedRoute";
 import RedirectByAuth from "@/components/routing/RedirectByAuth";
 import React, { Suspense } from "react";
 import Spinner from "@/components/ui/spinner";
+import CreateTickets from "./pages/CreateTickets";
 
 // Lazy loading pages
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
@@ -105,7 +106,7 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AppLayout>
-                    <div>Créer un ticket (à implémenter)</div>
+                    <CreateTickets />
                   </AppLayout>
                 </ProtectedRoute>
               }

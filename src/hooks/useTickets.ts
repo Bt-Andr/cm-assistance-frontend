@@ -41,11 +41,6 @@ export const useTickets = () => {
       if (res.data) return res.data;
       // Si l'API retourne directement un tableau
       if (Array.isArray(res)) return res;
-      // Si apiClient retourne un objet Response
-      if (typeof res.json === "function") {
-        const data = await res.json();
-        return data.data ?? data;
-      }
       // Par défaut, retourne un tableau vide
       return [];
     },

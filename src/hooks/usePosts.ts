@@ -37,14 +37,10 @@ export const usePosts = (page: number, limit: number) =>
   useQuery<PostsResponse>({
     queryKey: ["posts", page, limit],
     queryFn: async () => {
-      const res = await apiClient(
+      // apiClient retourne déjà le JSON
+      return await apiClient(
         `https://backend-cm-assistance.onrender.com/api/posts?page=${page}&limit=${limit}`
       );
-      // Si apiClient retourne un objet Response, il faut parser le JSON
-      if (typeof res.json === "function") {
-        return res.json();
-      }
-      return res;
     },
     // keepPreviousData: true,
   });

@@ -11,16 +11,12 @@ type RegisterData = {
 export const useRegister = () => {
   return useMutation({
     mutationFn: async (data: RegisterData) => {
-      const res = await apiClient("/api/auth/register", {
+      // apiClient gère déjà la gestion des erreurs et retourne le JSON
+      return await apiClient("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur lors de l'inscription");
-      }
-      return res.json();
     },
   });
 };
