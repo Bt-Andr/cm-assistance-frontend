@@ -13,7 +13,7 @@ export const useEditPost = () => {
 
   return useMutation({
     mutationFn: async (post: EditPostData) => {
-      return await apiClient(`/api/posts/${post.id}`, {
+      return await apiClient(`https://backend-cm-assistance.onrender.com/api/posts/${post.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

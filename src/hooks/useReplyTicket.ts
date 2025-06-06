@@ -11,7 +11,7 @@ export const useReplyTicket = () => {
   return useMutation({
     mutationFn: async ({ ticketId, message }: ReplyTicketData) => {
       // apiClient gère déjà la gestion des erreurs et retourne le JSON
-      return await apiClient(`/api/tickets/${ticketId}/reply`, {
+      return await apiClient(`https://backend-cm-assistance.onrender.com/api/tickets/${ticketId}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),

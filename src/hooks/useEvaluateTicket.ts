@@ -11,7 +11,7 @@ export const useEvaluateTicket = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ ticketId, rating, comment }: EvaluateTicketData) => {
-      return await apiClient(`/api/tickets/${ticketId}/evaluate`, {
+      return await apiClient(`https://backend-cm-assistance.onrender.com/api/tickets/${ticketId}/evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rating, comment }),
