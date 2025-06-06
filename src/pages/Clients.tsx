@@ -110,7 +110,7 @@ const Clients = () => {
           <p className="text-gray-500">Manage your client accounts and social media presence</p>
         </div>
         <Link
-          to="/clients/create"
+          to="/clients/Createclient"
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg shadow hover:bg-primary/90 transition-all duration-200"
         >
           <Plus className="h-5 w-5" />

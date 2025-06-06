@@ -4,6 +4,7 @@ import { isTokenValid } from "@/utils/token";
 import { toast } from "sonner";
 
 interface User {
+  avatarFile: string;
   userId: string;
   email: string;
   role?: string;
@@ -50,6 +51,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         phone: decoded.phone,
         address: decoded.address,
         avatarUrl: decoded.avatarUrl,
+        avatarFile: decoded.avatarFile,
       });
     } else {
       localStorage.removeItem("cm_token");
@@ -79,6 +81,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         phone: decoded.phone,
         address: decoded.address,
         avatarUrl: decoded.avatarUrl,
+        avatarFile: decoded.avatarFile,
       };
     }
     setUser(userToSet);

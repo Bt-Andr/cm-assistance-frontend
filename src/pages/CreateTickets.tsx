@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,70 +59,75 @@ const CreateTickets = () => {
   }
 
   return (
-    <div className="max-w-xl mx-auto mt-8">
-      <Button
-        variant="ghost"
-        className="mb-4 flex items-center gap-2"
-        onClick={() => navigate("/tickets")}
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Retour aux tickets
-      </Button>
-      <Card>
+    <div className="max-w-lg mx-auto mt-10">
+      <div className="flex items-center gap-3 mb-6">
+        <Link to="/tickets">
+          <Button variant="outline" size="sm" aria-label="Retour à la liste des tickets">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Retour
+          </Button>
+        </Link>
+        <h1 className="text-2xl font-semibold text-secondary">Créer un ticket</h1>
+      </div>
+      <Card className="shadow-card border border-secondary-light">
         <CardHeader>
-          <CardTitle>Créer un ticket</CardTitle>
+          <CardTitle className="text-lg font-medium text-secondary">Nouveau ticket</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="subject" className="block text-sm font-medium text-secondary mb-1">
-                Sujet <span className="text-red-500">*</span>
-              </label>
-              <Input
-                id="subject"
-                name="subject"
-                value={form.subject}
-                onChange={handleChange}
-                required
-                placeholder="Ex : Problème de connexion"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-secondary mb-1">
-                Description <span className="text-red-500">*</span>
-              </label>
-              <Textarea
-                id="message"
-                name="message"
-                value={form.message}
-                onChange={handleChange}
-                required
-                rows={5}
-                placeholder="Décrivez votre problème ou question en détail..."
-              />
-            </div>
-            <div>
-              <label htmlFor="priority" className="block text-sm font-medium text-secondary mb-1">
-                Priorité
-              </label>
-              <select
-                id="priority"
-                name="priority"
-                value={form.priority}
-                onChange={handleChange}
-                className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
-              >
-                <option value="low">Basse</option>
-                <option value="medium">Moyenne</option>
-                <option value="high">Haute</option>
-              </select>
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isPending}>
-                <Send className="h-4 w-4 mr-2" />
-                {isPending ? "Création..." : "Créer le ticket"}
-              </Button>
+          <form className="space-y-0" onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <label htmlFor="subject" className="w-28 text-sm text-secondary font-medium">
+                  Sujet <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="subject"
+                  name="subject"
+                  value={form.subject}
+                  onChange={handleChange}
+                  required
+                  placeholder="Ex : Problème de connexion"
+                  autoFocus
+                  className="flex-1"
+                />
+              </div>
+              <div className="flex items-start gap-4">
+                <label htmlFor="message" className="w-28 text-sm text-secondary font-medium pt-2">
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  id="message"
+                  name="message"
+                  value={form.message}
+                  onChange={handleChange}
+                  required
+                  rows={4}
+                  placeholder="Décrivez votre problème ou question en détail..."
+                  className="flex-1 resize-none"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <label htmlFor="priority" className="w-28 text-sm text-secondary font-medium">
+                  Priorité
+                </label>
+                <select
+                  id="priority"
+                  name="priority"
+                  value={form.priority}
+                  onChange={handleChange}
+                  className="flex-1 px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none bg-white"
+                >
+                  <option value="low">Basse</option>
+                  <option value="medium">Moyenne</option>
+                  <option value="high">Haute</option>
+                </select>
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button type="submit" disabled={isPending}>
+                  <Send className="h-4 w-4 mr-2" />
+                  {isPending ? "Création..." : "Créer le ticket"}
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>

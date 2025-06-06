@@ -9,7 +9,7 @@ export const useForgotPassword = () => {
   return useMutation({
     mutationFn: async (data: ForgotPasswordData) => {
       // apiClient gère déjà la gestion des erreurs et retourne le JSON
-      return await apiClient("/api/auth/forgot-password", {
+      return await apiClient("https://backend-cm-assistance.onrender.com/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

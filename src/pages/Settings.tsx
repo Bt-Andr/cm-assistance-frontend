@@ -2,62 +2,267 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { User, Bell, Settings as SettingsIcon, Shield, Globe, CreditCard, CheckCircle } from 'lucide-react';
+import { User, Bell, Settings as SettingsIcon, Shield, Globe, CreditCard, CheckCircle, Upload, X } from 'lucide-react';
 import { toast } from "sonner";
 import Spinner from "@/components/ui/spinner";
 import { useUser } from "@/context/UserContext";
-import { useUpdateProfile } from "@/hooks/useSettings"; // <-- Utilisation du bon hook
+import { useUpdateProfile } from "@/hooks/useSettings";
 
 const Settings = () => {
-  // Dynamically load user data
   const { user, isLoading: userLoading } = useUser();
   const [profile, setProfile] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    company: "",
-    position: "",
-    avatar: "",
-    phone: "", // Ajout du champ phone
+    avatarUrl: "",
+    avatarFile: "",
   });
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState(false);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
-  // Load user data into form
+  const [fieldErrors, setFieldErrors] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  }>({});
+
+  const [passwordFields, setPasswordFields] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordPending, setPasswordPending] = useState(false);
+
   useEffect(() => {
     if (user) {
+      let firstName = "";
+      let lastName = "";
+      if (user.name) {
+        const parts = user.name.trim().split(" ");
+        firstName = parts[0] || "";
+        lastName = parts.slice(1).join(" ") || "";
+      }
       setProfile({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
+        firstName,
+        lastName,
         email: user.email || "",
-        company: user.company || "",
-        position: user.position || "",
-        avatar: user.avatarUrl || "",
-        phone: user.phone || "", // Ajout du champ phone
+        avatarUrl: user.avatarUrl || "",
+        avatarFile: user.avatarFile || "",
       });
+      setAvatarPreview(user.avatarUrl || "");
     }
   }, [user]);
 
-  // Utilisation du hook useUpdateProfile depuis useSettings.ts
-  const { mutate: updateProfile, isPending: isProfilePending } = useUpdateProfile();
+  const { mutate: updateProfile, isPending } = useUpdateProfile();
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
+    setFieldErrors((prev) => ({ ...prev, [e.target.name]: undefined }));
   };
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPasswordFields({ ...passwordFields, [e.target.id]: e.target.value });
+    setPasswordError(null);
+  };
+
+  // Validation locale
+  const validateProfile = () => {
+    const errors: typeof fieldErrors = {};
+    if (!profile.firstName || profile.firstName.trim().length < 2) {
+      errors.firstName = "Le prénom doit contenir au moins 2 caractères.";
+    }
+    if (!profile.lastName || profile.lastName.trim().length < 2) {
+      errors.lastName = "Le nom doit contenir au moins 2 caractères.";
+    }
+    if (!profile.email) {
+      errors.email = "L'email est requis.";
+    } else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/.test(profile.email)) {
+      errors.email = "Format d'email invalide.";
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Prépare le payload pour le backend
+  const buildProfilePayload = () => {
+    const payload: any = {};
+
+    const firstName = profile.firstName.trim();
+    const lastName = profile.lastName.trim();
+    const name = `${firstName} ${lastName}`.trim();
+    if (firstName && lastName) payload.name = name;
+    if (profile.email && profile.email.trim()) payload.email = profile.email.trim();
+    if (profile.avatarUrl && profile.avatarUrl.trim()) payload.avatarUrl = profile.avatarUrl.trim();
+    if (profile.avatarFile && profile.avatarFile.trim()) payload.avatarFile = profile.avatarFile.trim();
+
+    return payload;
+  };
+
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    updateProfile(profile, {
-      onSuccess: () => {
-        toast.success("Profil mis à jour !");
+    setErrorDetail(null);
+
+    if (!validateProfile()) {
+      setSaving(false);
+      return;
+    }
+
+    let avatarUrlToSend = profile.avatarUrl;
+    let avatarFileToSend = profile.avatarFile;
+
+    // Upload avatar si besoin
+    if (avatarFile) {
+      const formData = new FormData();
+      formData.append("avatar", avatarFile);
+
+      try {
+        const res = await fetch("https://backend-cm-assistance.onrender.com/api/profile/avatar", {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("cm_token") || ""}`,
+            // NE PAS mettre 'Content-Type': 'application/json' ici !
+          },
+        });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          avatarUrlToSend = data.url;
+          avatarFileToSend = data.filename || "";
+        } else {
+          setErrorDetail(data?.message || "Erreur lors de l'upload de l'avatar.");
+          toast.error(data?.message || "Erreur lors de l'upload de l'avatar.");
+          setSaving(false);
+          return;
+        }
+      } catch (err: any) {
+        setErrorDetail(err?.message || "Erreur lors de l'upload de l'avatar.");
+        toast.error(err?.message || "Erreur lors de l'upload de l'avatar.");
         setSaving(false);
+        return;
+      }
+    }
+
+    // Affiche immédiatement le message d'attente
+    toast.info("Vous recevrez un mail de confirmation si la demande est acceptée.");
+    setPendingConfirmation(true);
+    localStorage.setItem("profile_update_pending", "true");
+
+    updateProfile(
+      {
+        ...buildProfilePayload(),
+        avatarUrl: avatarUrlToSend,
+        avatarFile: avatarFileToSend,
       },
-      onError: (error: any) => {
-        toast.error(error?.message || "Erreur lors de la mise à jour du profil.");
-        setSaving(false);
-      },
-    });
+      {
+        onSuccess: () => {
+          toast.success("Le mail de confirmation pour modifier vos données a été envoyé, vérifiez votre boite mail et confirmez votre demande.");
+          setSaving(false);
+          setPendingConfirmation(false);
+        },
+        onError: (error: any) => {
+          const msg = error?.message || error?.response?.data?.message || "Erreur lors de la demande de modification.";
+          setErrorDetail(msg);
+          toast.error(msg);
+          setSaving(false);
+          setPendingConfirmation(false);
+        },
+      }
+    );
   };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview("");
+    setProfile((prev) => ({
+      ...prev,
+      avatarUrl: "",
+      avatarFile: "",
+    }));
+  };
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordPending(true);
+
+    // Validation locale moderne
+    if (!passwordFields.currentPassword || !passwordFields.newPassword || !passwordFields.confirmPassword) {
+      setPasswordError("Tous les champs sont requis.");
+      setPasswordPending(false);
+      return;
+    }
+    if (passwordFields.newPassword.length < 8) {
+      setPasswordError("Le nouveau mot de passe doit contenir au moins 8 caractères.");
+      setPasswordPending(false);
+      return;
+    }
+    if (passwordFields.newPassword === passwordFields.currentPassword) {
+      setPasswordError("Le nouveau mot de passe doit être différent de l'ancien.");
+      setPasswordPending(false);
+      return;
+    }
+    // Validation complexité : majuscule, minuscule, chiffre, caractère spécial
+    const complexityRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    if (!complexityRegex.test(passwordFields.newPassword)) {
+      setPasswordError("Le nouveau mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial.");
+      setPasswordPending(false);
+      return;
+    }
+    if (passwordFields.newPassword !== passwordFields.confirmPassword) {
+      setPasswordError("Les mots de passe ne correspondent pas.");
+      setPasswordPending(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("https://backend-cm-assistance.onrender.com/api/profile/password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("cm_token") || ""}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordFields.currentPassword,
+          newPassword: passwordFields.newPassword,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.info("Vous recevrez un mail de confirmation pour changer votre mot de passe.");
+        setPasswordPending(true);
+        setPasswordFields({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        localStorage.setItem("password_update_pending", "true");
+      } else {
+        setPasswordError(data?.message || "Erreur lors de la demande de changement de mot de passe.");
+        setPasswordPending(false);
+      }
+    } catch (err: any) {
+      setPasswordError(err?.message || "Erreur lors de la demande de changement de mot de passe.");
+      setPasswordPending(false);
+    }
+  };
+
+  useEffect(() => {
+    const pending = localStorage.getItem("profile_update_pending") === "true";
+    setPendingConfirmation(pending);
+  }, []);
 
   if (userLoading) {
     return (
@@ -89,45 +294,74 @@ const Settings = () => {
             Billing
           </TabsTrigger>
         </TabsList>
-        
-        {/* Account Tab */}
+
         <TabsContent value="account">
           <div className="grid gap-6 md:grid-cols-2">
-            <Card className="shadow-card">
+            {/* Personal Information Card */}
+            <Card className="shadow-card w-full h-full flex flex-col">
               <CardHeader>
                 <CardTitle>Personal Information</CardTitle>
                 <CardDescription>Update your account details and profile picture</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 flex flex-col justify-between">
+                {pendingConfirmation && (
+                  <div className="mb-4 p-3 rounded bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A4.125 4.125 0 119 14.625M15.75 9V3.75A.75.75 0 0015 3h-6a.75.75 0 00-.75.75V9m9.75 0h-9.75" />
+                    </svg>
+                    <span>
+                      Modification en attente de confirmation. Veuillez vérifier votre boîte mail et cliquer sur le lien de confirmation pour appliquer les changements.
+                    </span>
+                  </div>
+                )}
+                {errorDetail && (
+                  <div className="mb-4 p-3 rounded bg-red-100 text-red-800 border border-red-300 flex items-center gap-2">
+                    <X className="w-5 h-5" />
+                    <span>{errorDetail}</span>
+                  </div>
+                )}
                 <form className="space-y-6" onSubmit={handleProfileSave}>
                   <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                     <div className="relative">
                       <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center text-white text-xl overflow-hidden">
-                        {profile.avatar ? (
-                          <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                        {avatarPreview ? (
+                          <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
                           (profile.firstName[0] || "") + (profile.lastName[0] || "")
                         )}
                       </div>
-                      <button type="button" className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 shadow">
-                        <User className="h-4 w-4" />
-                      </button>
+                      <label
+                        htmlFor="avatar-upload"
+                        className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 shadow cursor-pointer"
+                        title="Changer l'avatar"
+                      >
+                        <Upload className="h-4 w-4" />
+                        <input
+                          id="avatar-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleAvatarChange}
+                        />
+                      </label>
+                      {avatarPreview && (
+                        <button
+                          type="button"
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 shadow"
+                          title="Supprimer l'avatar"
+                          onClick={handleRemoveAvatar}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                     <div className="space-y-2 flex-1">
                       <p className="text-sm text-secondary/70">
                         Upload a new profile picture or avatar. Recommended size is 200x200px.
                       </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" size="sm" type="button" disabled>
-                          Upload Image
-                        </Button>
-                        <Button variant="ghost" size="sm" type="button" disabled>
-                          Remove
-                        </Button>
-                      </div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -140,8 +374,16 @@ const Settings = () => {
                           type="text"
                           value={profile.firstName}
                           onChange={handleProfileChange}
-                          className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          className={`w-full px-3 py-2 rounded-md border ${
+                            fieldErrors.firstName ? "border-red-500" : "border-secondary-light"
+                          } focus:ring-2 focus:ring-primary/20 focus:outline-none`}
                         />
+                        <p className="text-xs text-secondary/60 mt-1">
+                          Le prénom doit contenir au moins 2 caractères.
+                        </p>
+                        {fieldErrors.firstName && (
+                          <p className="text-red-500 text-xs mt-1">{fieldErrors.firstName}</p>
+                        )}
                       </div>
                       <div>
                         <label htmlFor="lastName" className="block text-sm font-medium text-secondary mb-1">
@@ -153,11 +395,19 @@ const Settings = () => {
                           type="text"
                           value={profile.lastName}
                           onChange={handleProfileChange}
-                          className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          className={`w-full px-3 py-2 rounded-md border ${
+                            fieldErrors.lastName ? "border-red-500" : "border-secondary-light"
+                          } focus:ring-2 focus:ring-primary/20 focus:outline-none`}
                         />
+                        <p className="text-xs text-secondary/60 mt-1">
+                          Le nom doit contenir au moins 2 caractères.
+                        </p>
+                        {fieldErrors.lastName && (
+                          <p className="text-red-500 text-xs mt-1">{fieldErrors.lastName}</p>
+                        )}
                       </div>
                     </div>
-                    
+
                     <div>
                       <label htmlFor="email" className="block text-sm font-medium text-secondary mb-1">
                         Email Address
@@ -168,132 +418,119 @@ const Settings = () => {
                         type="email"
                         value={profile.email}
                         onChange={handleProfileChange}
-                        className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        className={`w-full px-3 py-2 rounded-md border ${
+                          fieldErrors.email ? "border-red-500" : "border-secondary-light"
+                        } focus:ring-2 focus:ring-primary/20 focus:outline-none`}
                       />
+                      {fieldErrors.email && (
+                        <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
+                      )}
                     </div>
-                    
-                    <div>
-                      <label htmlFor="company" className="block text-sm font-medium text-secondary mb-1">
-                        Company
-                      </label>
-                      <input
-                        id="company"
-                        name="company"
-                        type="text"
-                        value={profile.company}
-                        onChange={handleProfileChange}
-                        className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="position" className="block text-sm font-medium text-secondary mb-1">
-                        Job Title
-                      </label>
-                      <input
-                        id="position"
-                        name="position"
-                        type="text"
-                        value={profile.position}
-                        onChange={handleProfileChange}
-                        className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                      />
-                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={saving || isPending || pendingConfirmation}>
+                      {saving || isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
 
+            {/* Security Card */}
+            <Card className="shadow-card w-full h-full flex flex-col">
+              <CardHeader>
+                <CardTitle>Security</CardTitle>
+                <CardDescription>Manage your password and security settings</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col justify-between">
+                <form className="space-y-6" onSubmit={handlePasswordUpdate}>
+                  <div className="space-y-4">
                     <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-secondary mb-1">
-                        Phone
+                      <label htmlFor="currentPassword" className="block text-sm font-medium text-secondary mb-1">
+                        Current Password
                       </label>
                       <input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        value={profile.phone}
-                        onChange={handleProfileChange}
+                        id="currentPassword"
+                        type="password"
+                        value={passwordFields.currentPassword}
+                        onChange={handlePasswordChange}
                         className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                        autoComplete="tel"
+                        autoComplete="current-password"
+                        disabled={passwordPending}
                       />
                     </div>
-                    
+                    <div>
+                      <label htmlFor="newPassword" className="block text-sm font-medium text-secondary mb-1">
+                        New Password
+                      </label>
+                      <input
+                        id="newPassword"
+                        type="password"
+                        value={passwordFields.newPassword}
+                        onChange={handlePasswordChange}
+                        className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        autoComplete="new-password"
+                        disabled={passwordPending}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-secondary mb-1">
+                        Confirm New Password
+                      </label>
+                      <input
+                        id="confirmPassword"
+                        type="password"
+                        value={passwordFields.confirmPassword}
+                        onChange={handlePasswordChange}
+                        className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        autoComplete="new-password"
+                        disabled={passwordPending}
+                      />
+                    </div>
+                    {passwordError && (
+                      <p className="text-red-500 text-xs mt-1">{passwordError}</p>
+                    )}
+                    {passwordPending && (
+                      <div className="mb-4 p-3 rounded bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A4.125 4.125 0 119 14.625M15.75 9V3.75A.75.75 0 0015 3h-6a.75.75 0 00-.75.75V9m9.75 0h-9.75" />
+                        </svg>
+                        <span>
+                          Changement de mot de passe en attente de confirmation. Veuillez vérifier votre boîte mail et cliquer sur le lien de confirmation.
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-end">
-                      <Button type="submit" disabled={saving || isProfilePending}>
-                        {saving || isProfilePending ? "Saving..." : "Save Changes"}
+                      <Button type="submit" disabled={passwordPending}>
+                        {passwordPending ? "En attente..." : "Update Password"}
                       </Button>
                     </div>
                   </div>
                 </form>
               </CardContent>
             </Card>
-            
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>Security</CardTitle>
-                <CardDescription>Manage your password and security settings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="current-password" className="block text-sm font-medium text-secondary mb-1">
-                        Current Password
-                      </label>
-                      <input
-                        id="current-password"
-                        type="password"
-                        className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                        autoComplete="current-password"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="new-password" className="block text-sm font-medium text-secondary mb-1">
-                        New Password
-                      </label>
-                      <input
-                        id="new-password"
-                        type="password"
-                        className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                        autoComplete="new-password"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="confirm-password" className="block text-sm font-medium text-secondary mb-1">
-                        Confirm New Password
-                      </label>
-                      <input
-                        id="confirm-password"
-                        type="password"
-                        className="w-full px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                        autoComplete="new-password"
-                      />
-                    </div>
-                    
-                    <div className="flex justify-end">
-                      <Button type="button">Update Password</Button>
-                    </div>
-                  </div>
-                  
-                  <div className="h-px bg-secondary-light"></div>
-                  
-                  <div>
-                    <h3 className="text-md font-medium text-secondary">Two-Factor Authentication</h3>
-                    <p className="text-sm text-secondary/70 mt-1">
-                      Add an extra layer of security to your account by requiring more than just a password to sign in.
-                    </p>
-                    <div className="mt-4">
-                      <Button variant="outline" className="flex items-center" type="button">
-                        <Shield className="h-4 w-4 mr-2" />
-                        Enable 2FA
-                      </Button>
-                    </div>
-                  </div>
+          </div>
+
+          {/* Nouvelle carte Two-Factor Authentication */}
+          <div className="mt-6">
+            <Card className="shadow-card w-full">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Two-Factor Authentication</CardTitle>
+                  <CardDescription>
+                    Add an extra layer of security to your account by requiring more than just a password to sign in.
+                  </CardDescription>
                 </div>
-              </CardContent>
+                <Button variant="outline" className="flex items-center" type="button">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Enable 2FA
+                </Button>
+              </CardHeader>
+              {/* Pas de CardContent nécessaire ici */}
             </Card>
           </div>
         </TabsContent>
-        
+
         {/* Notifications Tab */}
         <TabsContent value="notifications">
           <Card className="shadow-card">
@@ -305,7 +542,7 @@ const Settings = () => {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-md font-medium text-secondary">Email Notifications</h3>
-                  
+
                   <div className="space-y-2">
                     <div className="flex items-center justify-between py-2">
                       <div>
@@ -317,7 +554,7 @@ const Settings = () => {
                         <div className="w-11 h-6 bg-secondary-light peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-secondary-light after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    
+
                     <div className="flex items-center justify-between py-2">
                       <div>
                         <p className="text-sm font-medium text-secondary">Post Schedule Reminders</p>
@@ -328,7 +565,7 @@ const Settings = () => {
                         <div className="w-11 h-6 bg-secondary-light peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-secondary-light after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    
+
                     <div className="flex items-center justify-between py-2">
                       <div>
                         <p className="text-sm font-medium text-secondary">Analytics Reports</p>
@@ -339,7 +576,7 @@ const Settings = () => {
                         <div className="w-11 h-6 bg-secondary-light peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-secondary-light after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    
+
                     <div className="flex items-center justify-between py-2">
                       <div>
                         <p className="text-sm font-medium text-secondary">Client Communications</p>
@@ -352,12 +589,12 @@ const Settings = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="h-px bg-secondary-light"></div>
-                
+
                 <div className="space-y-4">
                   <h3 className="text-md font-medium text-secondary">In-App Notifications</h3>
-                  
+
                   <div className="space-y-2">
                     <div className="flex items-center justify-between py-2">
                       <div>
@@ -369,7 +606,7 @@ const Settings = () => {
                         <div className="w-11 h-6 bg-secondary-light peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-secondary-light after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    
+
                     <div className="flex items-center justify-between py-2">
                       <div>
                         <p className="text-sm font-medium text-secondary">Sound Alerts</p>
@@ -382,7 +619,7 @@ const Settings = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex justify-end">
                   <Button>Save Preferences</Button>
                 </div>
@@ -390,7 +627,7 @@ const Settings = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Preferences Tab */}
         <TabsContent value="preferences">
           <Card className="shadow-card">
@@ -402,7 +639,7 @@ const Settings = () => {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-md font-medium text-secondary">Display</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="language" className="block text-sm font-medium text-secondary mb-1">
@@ -419,7 +656,7 @@ const Settings = () => {
                         <option value="de">German</option>
                       </select>
                     </div>
-                    
+
                     <div>
                       <label htmlFor="timezone" className="block text-sm font-medium text-secondary mb-1">
                         Timezone
@@ -436,7 +673,7 @@ const Settings = () => {
                       </select>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between py-2">
                     <div>
                       <p className="text-sm font-medium text-secondary">Compact Mode</p>
@@ -448,12 +685,12 @@ const Settings = () => {
                     </label>
                   </div>
                 </div>
-                
+
                 <div className="h-px bg-secondary-light"></div>
-                
+
                 <div className="space-y-4">
                   <h3 className="text-md font-medium text-secondary">Social Media Integration</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="border rounded-md p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -467,7 +704,7 @@ const Settings = () => {
                       </div>
                       <Button variant="ghost" size="sm">Disconnect</Button>
                     </div>
-                    
+
                     <div className="border rounded-md p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#1DA1F2] flex items-center justify-center text-white">
@@ -480,7 +717,7 @@ const Settings = () => {
                       </div>
                       <Button variant="ghost" size="sm">Disconnect</Button>
                     </div>
-                    
+
                     <div className="border rounded-md p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#E4405F] flex items-center justify-center text-white">
@@ -493,7 +730,7 @@ const Settings = () => {
                       </div>
                       <Button variant="outline" size="sm">Connect</Button>
                     </div>
-                    
+
                     <div className="border rounded-md p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#0A66C2] flex items-center justify-center text-white">
@@ -508,7 +745,7 @@ const Settings = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex justify-end">
                   <Button>Save Preferences</Button>
                 </div>
@@ -516,7 +753,7 @@ const Settings = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Billing Tab */}
         <TabsContent value="billing">
           <Card className="shadow-card">
@@ -537,7 +774,7 @@ const Settings = () => {
                     </div>
                     <Button variant="outline">Change Plan</Button>
                   </div>
-                  
+
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
@@ -557,12 +794,12 @@ const Settings = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="h-px bg-secondary-light"></div>
-                
+
                 <div>
                   <h3 className="text-md font-medium text-secondary mb-4">Payment Methods</h3>
-                  
+
                   <div className="space-y-3">
                     <div className="border rounded-md p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -579,19 +816,19 @@ const Settings = () => {
                         <Button variant="ghost" size="sm">Edit</Button>
                       </div>
                     </div>
-                    
+
                     <Button variant="outline" className="w-full">
                       <CreditCard className="h-4 w-4 mr-2" />
                       Add Payment Method
                     </Button>
                   </div>
                 </div>
-                
+
                 <div className="h-px bg-secondary-light"></div>
-                
+
                 <div>
                   <h3 className="text-md font-medium text-secondary mb-4">Billing History</h3>
-                  
+
                   <div className="border rounded-md overflow-hidden">
                     <table className="w-full">
                       <thead>

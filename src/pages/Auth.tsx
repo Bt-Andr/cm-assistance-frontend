@@ -16,6 +16,8 @@ import { useLogin } from "@/hooks/useLogin";
 import { useRegister } from "@/hooks/useRegister";
 import { useForgotPassword } from "@/hooks/useForgotPassword";
 
+const passwordComplexity = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -24,7 +26,12 @@ const loginSchema = z.object({
 const signupSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(
+      passwordComplexity,
+      "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+    ),
   confirmPassword: z.string().min(8, "Confirm password is required"),
   companyType: z.enum(["freelancer", "agency", "sme"], {
     required_error: "Please select a company type",
@@ -243,7 +250,7 @@ const Auth = () => {
                     </form>
                   </Form>
                 ) : (
-                  <Form {...forgotForm}>
+                  <Form key="forgot" {...forgotForm}>
                     <form onSubmit={forgotForm.handleSubmit(onForgotSubmit)} className="space-y-4">
                       <FormField
                         control={forgotForm.control}

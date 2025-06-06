@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCreateClient, ClientData, SocialNetwork } from "@/hooks/useCreateClient";
+import { useCreateClient, ClientData } from "@/hooks/useCreateClient";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const clientSchema = z.object({
   name: z.string().min(2, "Le nom est requis"),
@@ -53,7 +56,6 @@ const CreateClient = () => {
   });
 
   const onSubmit = (data: FormValues) => {
-    // On force la structure attendue par ClientData
     const payload: ClientData = {
       name: data.name,
       email: data.email,
@@ -79,128 +81,140 @@ const CreateClient = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow">
-      {/* Bouton retour */}
-      <div className="mb-6 flex items-center gap-2">
-        <Link
-          to="/clients"
-          className="flex items-center gap-2 text-primary hover:underline font-medium"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          Retour à la liste des clients
+    <div className="max-w-2xl mx-auto mt-10">
+      <div className="flex items-center gap-3 mb-6">
+        <Link to="/clients">
+          <Button variant="outline" size="sm" aria-label="Retour à la liste des clients">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Retour
+          </Button>
         </Link>
+        <h1 className="text-2xl font-semibold text-secondary">Ajouter un client</h1>
       </div>
-      <h1 className="text-2xl font-bold mb-6">Ajouter un client</h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium mb-1">Nom *</label>
-          <input
-            {...register("name")}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Nom du client"
-          />
-          {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Email *</label>
-          <input
-            {...register("email")}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Email"
-          />
-          {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Téléphone</label>
-          <input
-            {...register("phone")}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Téléphone"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Adresse</label>
-          <input
-            {...register("address")}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Adresse"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Statut</label>
-          <select {...register("status")} className="w-full border rounded px-3 py-2">
-            <option value="Active">Actif</option>
-            <option value="Inactive">Inactif</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Réseaux sociaux</label>
-          {fields.map((field, idx) => (
-            <div key={field.id} className="flex gap-2 mb-2 items-end">
-              <div>
-                <input
-                  {...register(`socialNetworks.${idx}.type` as const)}
-                  className="border rounded px-2 py-1"
-                  placeholder="Plateforme (ex: Facebook)"
+      <Card className="shadow-card border border-secondary-light">
+        <CardHeader>
+          <CardTitle className="text-lg font-medium text-secondary">Nouveau client</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-0">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <label className="w-32 text-sm text-secondary font-medium">
+                  Nom <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  {...register("name")}
+                  placeholder="Nom du client"
+                  className="flex-1"
                 />
-                {errors.socialNetworks?.[idx]?.type &&
-                  typeof errors.socialNetworks[idx]?.type === "object" &&
-                  "message" in errors.socialNetworks[idx]?.type && (
-                    <p className="text-red-500 text-xs">
-                      {errors.socialNetworks[idx]?.type.message}
-                    </p>
-                  )}
               </div>
-              <div>
-                <input
-                  {...register(`socialNetworks.${idx}.handle` as const)}
-                  className="border rounded px-2 py-1"
-                  placeholder="Identifiant"
+              {errors.name && <p className="text-red-500 text-xs ml-32">{errors.name.message}</p>}
+
+              <div className="flex items-center gap-4">
+                <label className="w-32 text-sm text-secondary font-medium">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  {...register("email")}
+                  placeholder="Email"
+                  className="flex-1"
                 />
-                {errors.socialNetworks?.[idx]?.handle &&
-                  typeof errors.socialNetworks[idx]?.handle === "object" &&
-                  "message" in errors.socialNetworks[idx]?.handle && (
-                    <p className="text-red-500 text-xs">
-                      {errors.socialNetworks[idx]?.handle.message}
-                    </p>
-                  )}
               </div>
-              <div>
+              {errors.email && <p className="text-red-500 text-xs ml-32">{errors.email.message}</p>}
+
+              <div className="flex items-center gap-4">
+                <label className="w-32 text-sm text-secondary font-medium">Téléphone</label>
+                <Input
+                  {...register("phone")}
+                  placeholder="Téléphone"
+                  className="flex-1"
+                />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="w-32 text-sm text-secondary font-medium">Adresse</label>
+                <Input
+                  {...register("address")}
+                  placeholder="Adresse"
+                  className="flex-1"
+                />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="w-32 text-sm text-secondary font-medium">Statut</label>
                 <select
-                  {...register(`socialNetworks.${idx}.status` as const)}
-                  className="border rounded px-2 py-1"
-                  defaultValue="Active"
+                  {...register("status")}
+                  className="flex-1 px-3 py-2 rounded-md border border-secondary-light focus:ring-2 focus:ring-primary/20 focus:outline-none bg-white"
                 >
                   <option value="Active">Actif</option>
                   <option value="Inactive">Inactif</option>
                 </select>
               </div>
-              <button
-                type="button"
-                className="text-red-500 ml-2"
-                onClick={() => remove(idx)}
-                title="Supprimer"
-              >
-                ✕
-              </button>
+
+              <div>
+                <label className="block text-sm text-secondary font-medium mb-2">Réseaux sociaux</label>
+                {fields.map((field, idx) => (
+                  <div key={field.id} className="flex gap-2 mb-2 items-end">
+                    <Input
+                      {...register(`socialNetworks.${idx}.type` as const)}
+                      placeholder="Plateforme (ex: Facebook)"
+                      className="w-40"
+                    />
+                    <Input
+                      {...register(`socialNetworks.${idx}.handle` as const)}
+                      placeholder="Identifiant"
+                      className="w-40"
+                    />
+                    <select
+                      {...register(`socialNetworks.${idx}.status` as const)}
+                      className="px-2 py-1 rounded-md border border-secondary-light bg-white"
+                      defaultValue="Active"
+                    >
+                      <option value="Active">Actif</option>
+                      <option value="Inactive">Inactif</option>
+                    </select>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-500"
+                      onClick={() => remove(idx)}
+                      aria-label="Supprimer ce réseau"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {errors.socialNetworks && typeof errors.socialNetworks === "object" && (
+                  <p className="text-red-500 text-xs">
+                    {/* Affiche la première erreur trouvée */}
+                    {Array.isArray(errors.socialNetworks) &&
+                      errors.socialNetworks.find((sn) => sn?.type?.message || sn?.handle?.message)?.type?.message}
+                    {Array.isArray(errors.socialNetworks) &&
+                      errors.socialNetworks.find((sn) => sn?.type?.message || sn?.handle?.message)?.handle?.message}
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => append({ type: "", handle: "", status: "Active" })}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter un réseau social
+                </Button>
+              </div>
+
+              <div className="flex justify-end mt-4">
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? "Ajout en cours..." : "Ajouter le client"}
+                </Button>
+              </div>
             </div>
-          ))}
-          <button
-            type="button"
-            className="mt-2 px-3 py-1 bg-primary text-white rounded"
-            onClick={() => append({ type: "", handle: "", status: "Active" })}
-          >
-            Ajouter un réseau social
-          </button>
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-primary text-white py-2 rounded font-semibold"
-          disabled={isPending}
-        >
-          {isPending ? "Ajout en cours..." : "Ajouter le client"}
-        </button>
-      </form>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

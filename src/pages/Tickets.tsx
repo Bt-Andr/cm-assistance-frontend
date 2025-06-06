@@ -149,6 +149,7 @@ const Tickets = () => {
     return <p className="text-center text-red-500 py-10">Erreur lors du chargement des tickets.</p>;
   }
   
+  // Correction: Utilise truncate, whitespace-nowrap et réduit les paddings pour chaque colonne
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden">
       <div className="space-y-6">
@@ -205,17 +206,17 @@ const Tickets = () => {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="w-full max-w-full overflow-x-hidden">
+              <table className="w-full table-fixed">
                 <thead>
                   <tr className="text-left border-b border-secondary-light bg-secondary-light/30">
-                    <th className="px-6 py-3 text-xs font-medium text-secondary/70">TICKET ID</th>
-                    <th className="px-6 py-3 text-xs font-medium text-secondary/70">SUBJECT</th>
-                    <th className="px-6 py-3 text-xs font-medium text-secondary/70">CLIENT</th>
-                    <th className="px-6 py-3 text-xs font-medium text-secondary/70">DATE</th>
-                    <th className="px-6 py-3 text-xs font-medium text-secondary/70">STATUS</th>
-                    <th className="px-6 py-3 text-xs font-medium text-secondary/70">PRIORITY</th>
-                    <th className="px-6 py-3 text-xs font-medium text-secondary/70">ACTIONS</th>
+                    <th className="px-2 py-2 text-xs font-medium text-secondary/70 w-28 truncate">TICKET ID</th>
+                    <th className="px-2 py-2 text-xs font-medium text-secondary/70 w-40 truncate">SUBJECT</th>
+                    <th className="px-2 py-2 text-xs font-medium text-secondary/70 w-32 truncate">CLIENT</th>
+                    <th className="px-2 py-2 text-xs font-medium text-secondary/70 w-28 truncate">DATE</th>
+                    <th className="px-2 py-2 text-xs font-medium text-secondary/70 w-24 truncate">STATUS</th>
+                    <th className="px-2 py-2 text-xs font-medium text-secondary/70 w-24 truncate">PRIORITY</th>
+                    <th className="px-2 py-2 text-xs font-medium text-secondary/70 w-36 truncate">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-secondary-light">
@@ -232,35 +233,49 @@ const Tickets = () => {
                       return (
                         <React.Fragment key={ticket._id}>
                           <tr
-                            className={`hover:bg-secondary-light/20 transition cursor-pointer`}
+                            className="hover:bg-secondary-light/20 transition cursor-pointer"
                             onClick={() =>
                               setExpandedTicketId(isExpanded ? null : ticket._id)
                             }
                             aria-expanded={isExpanded}
                           >
-                            <td className="px-6 py-4 text-sm font-medium text-primary">
-                              {ticket._id}
+                            <td className="px-2 py-3 text-xs font-medium text-primary w-28 truncate whitespace-nowrap group relative">
+                              <span
+                                className="truncate block cursor-pointer"
+                                title={ticket._id}
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(ticket._id);
+                                  toast.success("ID copié !");
+                                }}
+                              >
+                                {ticket._id}
+                              </span>
+                              {/* Affichage complet au hover (tooltip custom) */}
+                              <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 z-10 hidden group-hover:block bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg">
+                                {ticket._id}
+                              </span>
                             </td>
-                            <td className="px-6 py-4 text-sm text-secondary">
+                            <td className="px-2 py-3 text-xs text-secondary w-40 truncate whitespace-nowrap">
                               {ticket.subject}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-2 py-3 w-32 truncate whitespace-nowrap">
                               <div className="flex items-center">
-                                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-xs mr-2">
+                                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-white text-xs mr-2">
                                   {ticket.avatarUrl
-                                    ? <img src={ticket.avatarUrl} alt={ticket.user} className="w-8 h-8 rounded-full object-cover" />
+                                    ? <img src={ticket.avatarUrl} alt={ticket.user} className="w-6 h-6 rounded-full object-cover" />
                                     : ticket.user[0]}
                                 </div>
-                                <span className="text-sm text-secondary">{ticket.user}</span>
+                                <span className="text-xs text-secondary truncate">{ticket.user}</span>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-sm text-secondary/70">
+                            <td className="px-2 py-3 text-xs text-secondary/70 w-28 truncate whitespace-nowrap">
                               {formatDate(ticket.createdAt)}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-2 py-3 w-24 truncate whitespace-nowrap">
                               <StatusBadge status={ticket.status} />
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-2 py-3 w-24 truncate whitespace-nowrap">
                               <span className={cn(
                                 "px-2 py-1 rounded-full text-xs font-medium",
                                 {
@@ -272,8 +287,8 @@ const Tickets = () => {
                                 {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
                               </span>
                             </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center space-x-2">
+                            <td className="px-2 py-3 w-36 truncate whitespace-nowrap">
+                              <div className="flex items-center space-x-1">
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -356,7 +371,7 @@ const Tickets = () => {
                           </tr>
                           {isExpanded && (
                             <tr>
-                              <td colSpan={7} className="bg-gray-50 px-8 py-6 border-t">
+                              <td colSpan={7} className="bg-gray-50 px-4 py-6 border-t">
                                 <div className="grid md:grid-cols-2 gap-6">
                                   <div>
                                     <h4 className="font-semibold mb-2">Description</h4>
@@ -386,9 +401,9 @@ const Tickets = () => {
                                   <div>
                                     <h4 className="font-semibold mb-2">Informations utilisateur</h4>
                                     <div className="flex items-center mb-2">
-                                      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-white text-lg mr-3">
+                                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-lg mr-3">
                                         {ticket.avatarUrl
-                                          ? <img src={ticket.avatarUrl} alt={ticket.user} className="w-10 h-10 rounded-full object-cover" />
+                                          ? <img src={ticket.avatarUrl} alt={ticket.user} className="w-8 h-8 rounded-full object-cover" />
                                           : ticket.user[0]}
                                       </div>
                                       <div>
